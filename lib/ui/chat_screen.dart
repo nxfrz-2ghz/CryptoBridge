@@ -1,20 +1,24 @@
 // ui/chat_screen.dart
 
-import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import "package:flutter/cupertino.dart";
+import "package:flutter/material.dart";
+import "package:provider/provider.dart";
 
+import "../models/user.dart";
 import "../models/contact.dart";
-import '../models/chat_state.dart';
-import 'message_bubble.dart';
-import 'input_bar.dart';
+import "../models/chat_state.dart";
+import "../models/handshake.dart";
+import "message_bubble.dart";
+import "input_bar.dart";
 
 
 class ChatScreen extends StatefulWidget {
+  final User user;
   final Contact contact;
 
   const ChatScreen ({
-    required this.contact
+    required this.user,
+    required this.contact,
   });
 
   @override
@@ -22,8 +26,39 @@ class ChatScreen extends StatefulWidget {
 }
 
 class _ChatScreenState extends State<ChatScreen> {
-  // Автопрокрутка вниз при новом сообщении
-  final _scrollController = ScrollController();
+  ChatState? _chatState;
+  bool _loading = true;
+
+  // INIT
+  @override
+  void initState() {
+    super.initState();
+    _init();
+  }
+
+  Future<void> _init() async {
+    Contact contact = widget.contact;
+
+    if (!contact.hasKey) {
+      final transport = contact.createTransport();
+      final handshake = Handshake(
+        transport: transport,
+        selfKeys: widget.user.keyPair,
+      );
+
+      final theirKey  = await handshake.perform();
+      contact = contact.withPublicKey(theirKey);
+      await widget.user.updateContact(contact);
+    }
+
+    setState(() {
+      _chatState = ChatState(
+        user: widget.user,
+        contact: contact,
+      );
+      _loading   = false;
+    });
+  }
 
   @override
   void dispose() {
@@ -31,8 +66,9 @@ class _ChatScreenState extends State<ChatScreen> {
     super.dispose();
   }
 
+  // SCROLLING
+  final _scrollController = ScrollController();
   void _scrollToBottom() {
-    // Небольшая задержка — ждём пока Flutter отрисует новый виджет
     Future.delayed(Duration(milliseconds: 100), () {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
@@ -44,18 +80,32 @@ class _ChatScreenState extends State<ChatScreen> {
     });
   }
 
+  // WIDGET
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => ChatState(contact: widget.contact),
+    if (_loading) {
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text("Performing Handshake...\nis other user online?.."),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return ChangeNotifierProvider.value(
+      value: _chatState!,
       child: Scaffold(
         backgroundColor: Colors.grey[50],
         appBar: _buildAppBar(),
         body: Column(
           children: [
-            // Список сообщений занимает всё место кроме поля ввода
             Expanded(child: _buildMessageList()),
-            // Поле ввода прибито к низу
             _buildInputBar(),
           ],
         ),
@@ -89,7 +139,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   Icon(Icons.lock, size: 12, color: Colors.green),
                   SizedBox(width: 4),
                   Text(
-                    'Сквозное шифрование',
+                    "E2E ENCRYPTION",
                     style: TextStyle(fontSize: 11, color: Colors.green),
                   ),
                 ],
@@ -102,8 +152,6 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Widget _buildMessageList() {
-    // Consumer перерисовывается когда ChatState вызывает notifyListeners()
-    // Аналог подписки на сигнал в Godot
     return Consumer<ChatState>(
       builder: (context, chat, _) {
         if (chat.messages.isEmpty) {
@@ -114,7 +162,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 Icon(Icons.lock_outline, size: 48, color: Colors.grey[300]),
                 SizedBox(height: 12),
                 Text(
-                  'Сообщения защищены\nсквозным шифрованием',
+                  "Messages encrypted",
                   textAlign: TextAlign.center,
                   style: TextStyle(color: Colors.grey[400], fontSize: 14),
                 ),
@@ -142,8 +190,6 @@ class _ChatScreenState extends State<ChatScreen> {
     return Consumer<ChatState>(
       builder: (context, chat, _) {
         return InputBar(
-          // Подключаем отправку из ChatState к UI кнопке
-          // Аналог connect("pressed", self, "_on_send") в Godot
           onSend: (text) => chat.sendMessage(text),
         );
       },

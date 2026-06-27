@@ -14,11 +14,14 @@ abstract class Transport {
 }
 
 abstract class PollingTransport extends Transport {
+  Timer? _timer;
+
   @override
   Future<void> send(Uint8List bytes) async {}
 
   void startPolling() {
-    Timer.periodic(Duration(seconds: 2), (_) async {
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(seconds: 2), (_) async {
       final messages = await _fetchFromServer();
       for (final msg in messages) {
         push(msg);
@@ -33,6 +36,15 @@ abstract class PollingTransport extends Transport {
 class TestTransport extends Transport {
   @override
   Future<void> send(Uint8List bytes) async {
-    push(bytes);
+    print("Sending: ${bytes}");
+    Future.delayed(Duration(milliseconds: 300 + bytes.length), (){
+      push(bytes);
+    });
+  }
+
+  @override
+  void push(Uint8List bytes) {
+    print("Received: $bytes");
+    super.push(bytes);
   }
 }

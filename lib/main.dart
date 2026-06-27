@@ -1,48 +1,34 @@
 // main.dart
-import 'dart:math';
-import 'dart:convert';
+import "dart:math";
+import "dart:convert";
 
 import "modules/disk_control.dart";
 import "modules/transport.dart";
+
+import "models/user.dart";
 import "models/contact.dart";
 
-import 'package:flutter/material.dart';
-import 'ui/home_screen.dart';
+import "package:flutter/material.dart";
+import "ui/home_screen.dart";
+import "ui/create_user_screen.dart";
 
-String nodeID = "";
-List<Contact> contacts = [];
+User? currentUser;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await generateNodeID();
-  await findContacts();
+  currentUser = await loadUser();
   runApp(const MessengerApp());
 }
 
-Future<void> generateNodeID() async {
-  const key = "node-id";
+Future<User?> loadUser() async {
+  const key = "userlist";
+  if (!await diskControl.has(key)) return null;
 
-  if (await diskControl.has(key)) {
-    nodeID = await diskControl.get(key);
-  } else {
-    final random = Random.secure();
-    final values = List<int>.generate(16, (i) => random.nextInt(256));
-    nodeID = base64Url.encode(values).replaceAll('=', '').substring(0, 16);
-    await diskControl.set(key, nodeID);
-  }
-}
+  final jsonStr  = await diskControl.get(key);
+  final userList = (jsonDecode(jsonStr) as List).cast<String>();
+  if (userList.isEmpty) return null;
 
-Future<void> findContacts() async {
-  for (int i = 0; i < 5; i++){
-    int randomInt = Random().nextInt(10);
-    String name = "Test Contact ${randomInt.toString()}";
-
-    Contact testContact = Contact(
-        name: name,
-        transportType: TransportType.test,
-    );
-    contacts.add(testContact);
-  }
+  return User.load(userList[0]);
 }
 
 class MessengerApp extends StatelessWidget {
@@ -51,7 +37,7 @@ class MessengerApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'CryptoBridge',
+      title: "CryptoBridge",
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
@@ -59,11 +45,9 @@ class MessengerApp extends StatelessWidget {
       ),
 
       // Стартовый экран
-      home: HomeScreen(
-        id: nodeID,
-        contacts: contacts,
-      ),
-
+      home: currentUser != null
+          ? HomeScreen(user: currentUser!)
+          : const CreateUserScreen(),
     );
   }
 }

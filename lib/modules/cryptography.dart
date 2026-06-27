@@ -7,31 +7,31 @@ import 'package:cryptography/cryptography.dart';
 Translator translator = Translator();
 class Translator {
   
-  Uint8List encodeText(String text) {
+  Future<Uint8List> encodeText(String text) async {
     Uint8List bytes = Uint8List.fromList(utf8.encode(text));
     return bytes;
   }
   
-  String decodeText(Uint8List bytes) {
+  Future<String> decodeText(Uint8List bytes) async {
     String text = utf8.decode(bytes);
     return text;
   }
   
 }
 
-class KeyPair {
+class CryptoKeys {
   final SimpleKeyPair privateKey;
   final SimplePublicKey publicKey;
 
-  const KeyPair({
+  const CryptoKeys({
     required this.privateKey,
     required this.publicKey,
   });
 
-  static Future<KeyPair> generate() async {
+  static Future<CryptoKeys> generate() async {
     final pair = await X25519().newKeyPair();
     final pub  = await pair.extractPublicKey();
-    return KeyPair(privateKey: pair, publicKey: pub);
+    return CryptoKeys(privateKey: pair, publicKey: pub);
   }
 
   Uint8List exportPublicKey() {
@@ -41,7 +41,7 @@ class KeyPair {
 }
 
 class CryptoBridge {
-  final KeyPair selfKeyPair;
+  final CryptoKeys selfKeyPair;
   final SimplePublicKey theirPublicKey;
 
   // Constructors
@@ -51,7 +51,7 @@ class CryptoBridge {
   });
 
   static CryptoBridge fromBytes({
-    required KeyPair selfKeyPair,
+    required CryptoKeys selfKeyPair,
     required Uint8List theirPublicKeyBytes,
   }) {
     return CryptoBridge(

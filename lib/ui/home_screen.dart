@@ -1,16 +1,14 @@
 // ui/home_screen.dart
-import 'package:flutter/material.dart';
+import "package:flutter/material.dart";
 
-import "../models/contact.dart";
-import 'chat_screen.dart';
+import "../models/user.dart";
+import "chat_screen.dart";
 
 class HomeScreen extends StatefulWidget {
-  final String id;
-  final List<Contact> contacts;
+  final User user;
 
   const HomeScreen({
-    required this.id,
-    required this.contacts,
+    required this.user,
   });
 
   @override
@@ -23,30 +21,33 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
 
       appBar: AppBar(
-        title: const Text('Контакты'),
+        title: const Text("Contacts"),
       ),
 
-      body: widget.contacts.isEmpty
+      body: widget.user.contacts.isEmpty
           ? Center(
         child: Text(
-          'Нет контактов',
+          "Empty",
           style: TextStyle(color: Colors.grey),
         ),
       )
           : ListView.builder(
-        itemCount: widget.contacts.length,
+        itemCount: widget.user.contacts.length,
         itemBuilder: (context, index) {
-          final contact = widget.contacts[index];
+          final contact = widget.user.contacts[index];
           return ListTile(
+            
             leading: const Icon(Icons.person),
             title: Text(contact.name),
-            // стрелка справа — подсказывает что это кнопка
             trailing: const Icon(Icons.chevron_right),
             onTap: () {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (ctx) => ChatScreen(contact: contact),
+                  builder: (ctx) => ChatScreen(
+                    user: widget.user,
+                    contact: contact,
+                  ),
                 ),
               );
             },
