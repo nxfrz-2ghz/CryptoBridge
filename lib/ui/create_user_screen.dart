@@ -1,7 +1,10 @@
 // ui/create_user_screen.dart
-import 'package:flutter/material.dart';
-import '../models/user.dart';
-import 'home_screen.dart';
+import "package:flutter/material.dart";
+import 'package:provider/provider.dart';
+
+import "../models/user_store.dart";
+import "../models/user.dart";
+import "home_screen.dart";
 
 class CreateUserScreen extends StatefulWidget {
   const CreateUserScreen({super.key});
@@ -20,11 +23,13 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
 
     final user = await User.create(_controller.text.trim());
 
+    await context.read<UserStore>().setUser(user);
+
     if (!mounted) return;
 
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (_) => HomeScreen(user: user)),
+      MaterialPageRoute(builder: (_) => HomeScreen()),
     );
   }
 
@@ -38,13 +43,13 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
 
-              Text('Create new account', style: Theme.of(context).textTheme.headlineMedium),
+              Text("Create new account", style: Theme.of(context).textTheme.headlineMedium),
 
               const SizedBox(height: 32),
               TextField(
                 controller: _controller,
                 decoration: const InputDecoration(
-                  labelText: 'Username',
+                  labelText: "Username",
                   border: OutlineInputBorder(),
                 ),
                 onSubmitted: (_) => _create(),
@@ -55,7 +60,7 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
                   ? const CircularProgressIndicator()
                   : ElevatedButton(
                 onPressed: _create,
-                child: const Text('Create'),
+                child: const Text("Create"),
               ),
 
             ],

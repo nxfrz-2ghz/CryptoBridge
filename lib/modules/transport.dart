@@ -3,13 +3,13 @@ import 'dart:typed_data';
 import 'dart:async';
 
 abstract class Transport {
-  Future<void> send(Uint8List bytes);
+  Future<void> send(String bytes);
 
   // Stream автоматически вызывает receive
-  final _streamController = StreamController<Uint8List>.broadcast();
-  Stream<Uint8List> receive() => _streamController.stream;
+  final _streamController = StreamController<String>.broadcast();
+  Stream<String> receive() => _streamController.stream;
 
-  void push(Uint8List bytes) => _streamController.add(bytes);
+  void push(String bytes) => _streamController.add(bytes);
   void dispose() => _streamController.close();
 }
 
@@ -17,7 +17,7 @@ abstract class PollingTransport extends Transport {
   Timer? _timer;
 
   @override
-  Future<void> send(Uint8List bytes) async {}
+  Future<void> send(String bytes) async {}
 
   void startPolling() {
     _timer?.cancel();
@@ -29,13 +29,13 @@ abstract class PollingTransport extends Transport {
     });
   }
 
-  Future<List<Uint8List>> _fetchFromServer() async => [];
+  Future<List<String>> _fetchFromServer() async => [];
 }
 
 
 class TestTransport extends Transport {
   @override
-  Future<void> send(Uint8List bytes) async {
+  Future<void> send(String bytes) async {
     print("Sending: ${bytes}");
     Future.delayed(Duration(milliseconds: 300 + bytes.length), (){
       push(bytes);
@@ -43,7 +43,7 @@ class TestTransport extends Transport {
   }
 
   @override
-  void push(Uint8List bytes) {
+  void push(String bytes) {
     print("Received: $bytes");
     super.push(bytes);
   }

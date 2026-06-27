@@ -1,10 +1,12 @@
 // main.dart
 import "dart:math";
 import "dart:convert";
+import "package:provider/provider.dart";
 
 import "modules/disk_control.dart";
 import "modules/transport.dart";
 
+import "models/user_store.dart";
 import "models/user.dart";
 import "models/contact.dart";
 
@@ -12,23 +14,17 @@ import "package:flutter/material.dart";
 import "ui/home_screen.dart";
 import "ui/create_user_screen.dart";
 
-User? currentUser;
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  currentUser = await loadUser();
-  runApp(const MessengerApp());
-}
+  final store = UserStore();
+  await store.load();
 
-Future<User?> loadUser() async {
-  const key = "userlist";
-  if (!await diskControl.has(key)) return null;
-
-  final jsonStr  = await diskControl.get(key);
-  final userList = (jsonDecode(jsonStr) as List).cast<String>();
-  if (userList.isEmpty) return null;
-
-  return User.load(userList[0]);
+  runApp(
+    ChangeNotifierProvider.value(
+      value: store,
+      child: const MessengerApp(),
+    ),
+  );
 }
 
 class MessengerApp extends StatelessWidget {
@@ -45,9 +41,9 @@ class MessengerApp extends StatelessWidget {
       ),
 
       // Стартовый экран
-      home: currentUser != null
-          ? HomeScreen(user: currentUser!)
-          : const CreateUserScreen(),
+      home: context.read<UserStore>().user != null
+       ? HomeScreen()
+       : const CreateUserScreen(),
     );
   }
 }

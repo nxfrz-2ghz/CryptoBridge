@@ -4,6 +4,7 @@ import "dart:async";
 
 import "../modules/transport.dart";
 import "../modules/cryptography.dart";
+import "../modules/text_encoder.dart";
 import "packet.dart";
 
 class Handshake {
@@ -25,12 +26,14 @@ class Handshake {
       type: PacketType.hello,
       payload: selfKeys.exportPublicKey(),
     );
-    await transport.send(packet.toBytes());
+    String text = await wordCoder.toWords(packet.toBytes());
+    await transport.send(text);
   }
 
   Future<Uint8List> _waitForHello() async {
     try {
-      await for (final bytes in transport.receive().timeout(const Duration(seconds: 5))) {
+      await for (final text in transport.receive().timeout(const Duration(seconds: 5))) {
+        final bytes = await wordCoder.toBytes(text);
         final packet = Packet.fromBytes(bytes);
         if (packet.type == PacketType.hello) {
           return packet.payload;

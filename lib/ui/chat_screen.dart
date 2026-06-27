@@ -5,6 +5,7 @@ import "package:flutter/material.dart";
 import "package:provider/provider.dart";
 
 import "../models/user.dart";
+import "../models/user_store.dart";
 import "../models/contact.dart";
 import "../models/chat_state.dart";
 import "../models/handshake.dart";
@@ -13,11 +14,9 @@ import "input_bar.dart";
 
 
 class ChatScreen extends StatefulWidget {
-  final User user;
   final Contact contact;
 
-  const ChatScreen ({
-    required this.user,
+  ChatScreen ({
     required this.contact,
   });
 
@@ -43,17 +42,17 @@ class _ChatScreenState extends State<ChatScreen> {
       final transport = contact.createTransport();
       final handshake = Handshake(
         transport: transport,
-        selfKeys: widget.user.keyPair,
+        selfKeys: context.read<UserStore>().user!.keyPair,
       );
 
       final theirKey  = await handshake.perform();
       contact = contact.withPublicKey(theirKey);
-      await widget.user.updateContact(contact);
+      await context.read<UserStore>().updateContact(contact);
     }
 
     setState(() {
       _chatState = ChatState(
-        user: widget.user,
+        user: context.read<UserStore>().user!,
         contact: contact,
       );
       _loading   = false;

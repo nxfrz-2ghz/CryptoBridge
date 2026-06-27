@@ -1,11 +1,19 @@
 // models/contact.dart
-import 'dart:typed_data';
+import "dart:typed_data";
 import "dart:convert";
+import 'package:flutter/material.dart';
 
 import "../modules/transport.dart";
 
 enum TransportType {
-  test,
+  test;
+
+  IconData get icon {
+    switch (this) {
+      case TransportType.test:
+        return Icons.science;
+    }
+  }
 }
 
 

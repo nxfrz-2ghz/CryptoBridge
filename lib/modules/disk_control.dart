@@ -28,7 +28,7 @@ class WindowsDiskControl implements DiskControl {
     final exePath = Platform.resolvedExecutable;
     final exeDir = p.dirname(exePath);
 
-    final saveDir = Directory(p.join(exeDir, 'data'));
+    final saveDir = Directory(p.join(exeDir, 'storage'));
     if (!await saveDir.exists()) {
       await saveDir.create(recursive: true);
     }

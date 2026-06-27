@@ -32,7 +32,7 @@ class User {
   });
 
   static Future<User> create(String name) async {
-    final nodeID   = await _createNodeID();
+    final nodeID   = _generateID();
     final keyPair  = await CryptoKeys.generate();
     final contacts = await _createTestContacts(nodeID);
 
@@ -51,6 +51,12 @@ class User {
 
     return User(name: name, nodeID: nodeID, contacts: contacts, keyPair: keyPair);
   }
+  
+  Future<void> save() async {
+    _saveUsername(nodeID, name);
+    _saveKeyPair(nodeID, keyPair);
+    _saveContacts(nodeID, contacts);
+  }
 
   // ─── Public ───────────────────────────────────────────────────────────────
 
@@ -60,21 +66,31 @@ class User {
     return User(name: name, nodeID: nodeID, contacts: updated, keyPair: keyPair);
   }
 
-  Future<void> updateContact(Contact contact) async {
-    int index = contacts.indexWhere((oldContact) => oldContact.nodeID == contact.nodeID);
+  Future<User> updateContact(Contact contact) async {
+    final updated = contacts.map((c) =>
+    c.nodeID == contact.nodeID ? contact : c
+    ).toList();
 
-    if (index != -1) {
-      contacts[index] = contact;
-      await _saveContacts(nodeID, contacts);
-    }
+    await _saveContacts(nodeID, updated);
+
+    return User(
+      name: name,
+      nodeID: nodeID,
+      contacts: updated,
+      keyPair: keyPair,
+    );
   }
 
 
-  // ─── Key helper ───────────────────────────────────────────────────────────
+  // ─── Private ──────────────────────────────────────────────────────────────
 
   static String _key(String nodeID, String k) => "$nodeID:$k";
 
-  // ─── UserList ─────────────────────────────────────────────────────────────
+  static String _generateID() {
+    final random = Random.secure();
+    final values = List<int>.generate(16, (_) => random.nextInt(256));
+    return base64Url.encode(values).replaceAll("=", "").substring(0, 16);
+  }
 
   static Future<void> _addToUserList(String nodeID) async {
     List<String> list = [];
@@ -83,16 +99,6 @@ class User {
     }
     list.add(nodeID);
     await diskControl.set(_userListKey, jsonEncode(list));
-  }
-
-  // ─── NodeID ───────────────────────────────────────────────────────────────
-
-  static Future<String> _createNodeID() async {
-    final random = Random.secure();
-    final values = List<int>.generate(16, (_) => random.nextInt(256));
-    final id = base64Url.encode(values).replaceAll("=", "").substring(0, 16);
-    await diskControl.set(_nodeIDKey, id);
-    return id;
   }
 
   // ─── Username ─────────────────────────────────────────────────────────────
@@ -130,16 +136,20 @@ class User {
 
   // ─── Contacts ─────────────────────────────────────────────────────────────
 
-  static Future<List<Contact>> _createTestContacts(String nodeID) async {
+  static Future<List<Contact>> _createTestContacts(String userNodeID) async {
     final random = Random();
-    final contacts = List.generate(5, (_) {
-      return Contact(
+    final contacts = <Contact>[];
+
+    for (int i = 0; i < 5; i++) {
+      final contactID = _generateID();
+      contacts.add(Contact(
         name: "Test Contact ${random.nextInt(999999)}",
-        nodeID: _createNodeID().toString(),
+        nodeID: contactID,
         transportType: TransportType.test,
-      );
-    });
-    await _saveContacts(nodeID, contacts);
+      ));
+    }
+
+    await _saveContacts(userNodeID, contacts);
     return contacts;
   }
 

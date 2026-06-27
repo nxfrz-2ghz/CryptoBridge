@@ -1,23 +1,7 @@
 // modules/cryptography.dart
-import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:cryptography/cryptography.dart';
-
-Translator translator = Translator();
-class Translator {
-  
-  Future<Uint8List> encodeText(String text) async {
-    Uint8List bytes = Uint8List.fromList(utf8.encode(text));
-    return bytes;
-  }
-  
-  Future<String> decodeText(Uint8List bytes) async {
-    String text = utf8.decode(bytes);
-    return text;
-  }
-  
-}
 
 class CryptoKeys {
   final SimpleKeyPair privateKey;
