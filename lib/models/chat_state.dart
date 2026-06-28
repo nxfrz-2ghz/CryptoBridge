@@ -1,11 +1,13 @@
 // models/chat_state.dart
 import "package:flutter/foundation.dart";
 import "package:flutter/gestures.dart";
+import 'package:audioplayers/audioplayers.dart';
 import "dart:typed_data";
 import "dart:io";
 import "dart:convert";
 
 import "message.dart";
+import "packet.dart";
 import "user.dart";
 import "contact.dart";
 import "../modules/transport.dart";
@@ -14,7 +16,9 @@ import "../modules/text_encoder.dart";
 import "../modules/disk_control.dart";
 
 class ChatState extends ChangeNotifier {
+  final AudioPlayer _audioPlayer = AudioPlayer();
   final List<Message> _messages = [];
+  final Map<int, Message> _pendingAcks = {};
   final Contact contact;
   final User user;
 
@@ -44,16 +48,24 @@ class ChatState extends ChangeNotifier {
 
   @override
   void dispose() {
+    _audioPlayer.dispose();
     transport.dispose();
     super.dispose();
   }
 
   Future<void> sendMessage(String text) async {
-    _addMessage(text, true);
 
     // Sending
     final encodedBytes = await byteCoder.encodeText(text);
-    final compressedBytes = Uint8List.fromList(gzip.encode(encodedBytes));
+    final packet = Packet.create(
+      type: PacketType.message,
+      payload: encodedBytes,
+    );
+
+    final message = _addMessage(text, true, packetID: packet.id);
+    _pendingAcks[packet.id] = message;
+
+    final compressedBytes = Uint8List.fromList(gzip.encode(packet.toBytes()));
     final encryptedBytes = await cryptoBridge.encrypt(compressedBytes);
     final encryptedText = await wordCoder.toWords(encryptedBytes);
 
@@ -67,20 +79,80 @@ class ChatState extends ChangeNotifier {
     final encryptedBytes = await wordCoder.toBytes(encryptedText);
     final decryptedBytes = await cryptoBridge.decrypt(encryptedBytes);
     final decompressedBytes = Uint8List.fromList(gzip.decode(decryptedBytes));
-    final text = await byteCoder.decodeText(decompressedBytes);
+    final packet = Packet.fromBytes(decompressedBytes);
 
-    _addMessage(text, false);
+    switch (packet.type) {
+      case PacketType.hello:
+        _addMessage("Unexpected hello in ChatState!!!", false);
+      case PacketType.ack:
+        final ackedID = ByteData.sublistView(packet.payload).getUint32(0);
+        _markDelivered(ackedID);
+      case PacketType.message:
+        // Receiving Message
+        final text = await byteCoder.decodeText(packet.payload);
+        _addMessage(
+            text,
+            false,
+            time: DateTime.fromMillisecondsSinceEpoch(packet.timeStamp)
+        );
+
+        // Sending ack packet
+        final ackPacket = Packet.create(
+          type: PacketType.ack,
+          payload: Uint8List(4)..buffer.asByteData().setUint32(0, packet.id),
+        );
+        final compressedBytes = Uint8List.fromList(gzip.encode(ackPacket.toBytes()));
+        final encryptedBytes = await cryptoBridge.encrypt(compressedBytes);
+        final encryptedText = await wordCoder.toWords(encryptedBytes);
+        await transport.send(encryptedText);
+    }
   }
 
-  void _addMessage(String text, bool isMe) {
-    _messages.add(Message(
+  Message _addMessage(
+      final String text, final bool isMe,
+      {int? packetID, MessageStatus? status, DateTime? time}
+    ) {
+
+    time ??= DateTime.now();
+    status ??= isMe ? MessageStatus.sending : null;
+
+    final message = Message(
+      packetID: packetID,
+      status: status,
       text: text,
       isMe: isMe,
-      time: DateTime.now(),
-    ));
-    // TODO: sound effect
+      time: time,
+    );
+    _messages.add(message);
+
+    _playChatSound(isMe);
     notifyListeners();
     _saveHistory();
+
+    return message;
+  }
+
+  Future<void> _playChatSound(bool isMe) async {
+    try {
+      final soundPath = isMe ? 'sounds/sent.mp3' : 'sounds/received.mp3';
+
+      await _audioPlayer.stop();
+
+      await _audioPlayer.play(AssetSource(soundPath));
+    } catch (e) {
+      return;
+    }
+  }
+
+  void _markDelivered(final int messageID) {
+    final message = _pendingAcks.remove(messageID);
+
+    if (message != null) {
+      message.status = MessageStatus.delivered;
+
+      notifyListeners();
+      _saveHistory();
+    }
   }
 
   Future<void> _loadHistory() async {

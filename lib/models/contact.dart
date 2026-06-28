@@ -6,12 +6,15 @@ import 'package:flutter/material.dart';
 import "../modules/transport.dart";
 
 enum TransportType {
-  test;
+  test,
+  LANBroadcast;
 
   IconData get icon {
     switch (this) {
       case TransportType.test:
         return Icons.science;
+      case TransportType.LANBroadcast:
+        return Icons.wifi;
     }
   }
 }
@@ -31,10 +34,15 @@ class Contact {
   });
 
   Transport createTransport() {
+    final Transport transport;
     switch (transportType) {
       case TransportType.test:
-        return TestTransport();
+        transport = TestTransport();
+      case TransportType.LANBroadcast:
+        transport = LanBroadcastTransport(port: 5678);
+        transport.init();
     }
+    return transport;
   }
 
   Contact withPublicKey(Uint8List key) => Contact(

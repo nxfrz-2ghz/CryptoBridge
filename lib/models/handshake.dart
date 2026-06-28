@@ -22,7 +22,7 @@ class Handshake {
   }
 
   Future<void> _sendHello() async {
-    final packet = Packet(
+    final packet = Packet.create(
       type: PacketType.hello,
       payload: selfKeys.exportPublicKey(),
     );

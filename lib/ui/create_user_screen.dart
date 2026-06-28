@@ -25,6 +25,7 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
 
     await context.read<UserStore>().setUser(user);
 
+
     if (!mounted) return;
 
     Navigator.pushReplacement(

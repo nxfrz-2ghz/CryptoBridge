@@ -7,17 +7,25 @@ import "user.dart";
 
 class UserStore extends ChangeNotifier {
   User? _user;
+  List<User> _users = [];
 
   User? get user => _user;
+  List<User> get users => _users;
 
   Future<void> load() async {
-    _user = await _loadUser();
+    await _loadUsers();
     notifyListeners();
   }
 
   Future<void> setUser(User user) async {
     _user = user;
+    _users.add(user);
     await user.save();
+    notifyListeners();
+  }
+
+  Future<void> addContact(Contact contact) async {
+    _user = await _user!.addContact(contact);
     notifyListeners();
   }
 
@@ -26,14 +34,13 @@ class UserStore extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<User?> _loadUser() async {
-    const key = "userlist";
-    if (!await diskControl.has(key)) return null;
-
-    final jsonStr  = await diskControl.get(key);
+  Future<void> _loadUsers() async {
+    if (!await diskControl.has("userlist")) return;
+    final jsonStr = await diskControl.get("userlist");
     final userList = (jsonDecode(jsonStr) as List).cast<String>();
-    if (userList.isEmpty) return null;
-
-    return User.load(userList[0]);
+    for (String userName in userList){
+      _users.add(await User.load(userName));
+    }
+    _user = users[0];
   }
 }
