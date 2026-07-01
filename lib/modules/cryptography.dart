@@ -1,6 +1,5 @@
 // modules/cryptography.dart
 import 'dart:typed_data';
-
 import 'package:cryptography/cryptography.dart';
 
 class CryptoKeys {
@@ -21,7 +20,6 @@ class CryptoKeys {
   Uint8List exportPublicKey() {
     return Uint8List.fromList(publicKey.bytes);
   }
-
 }
 
 class CryptoBridge {
@@ -83,5 +81,20 @@ class CryptoBridge {
     );
 
     return Uint8List.fromList(await algorithm.decrypt(box, secretKey: secret));
+  }
+}
+
+class KeyFingerprint {
+  static Future<String> compute(Uint8List publicKey) async {
+    final hash = await Sha256().hash(publicKey);
+    return hash.bytes
+        .map((b) => b.toRadixString(16).padLeft(2, '0'))
+        .join();
+  }
+
+  static Future<String> short(Uint8List publicKey) async {
+    final full = await compute(publicKey);
+    // "a1b2c3...x7y8z9"
+    return "${full.substring(0, 6)}...${full.substring(full.length - 6)}";
   }
 }

@@ -81,6 +81,21 @@ class User {
     );
   }
 
+  Future<User> removeContact(String contactID) async {
+    final updated = contacts
+        .where((c) => c.nodeID != contactID)
+        .toList();
+
+    await _saveContacts(nodeID, updated);
+
+    return User(
+      name: name,
+      nodeID: nodeID,
+      contacts: updated,
+      keyPair: keyPair,
+    );
+  }
+
 
   // ─── Private ──────────────────────────────────────────────────────────────
 

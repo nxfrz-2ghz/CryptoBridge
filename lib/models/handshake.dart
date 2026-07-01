@@ -1,4 +1,5 @@
 // models/handhsake.dart
+import "dart:io";
 import "dart:typed_data";
 import "dart:async";
 
@@ -26,15 +27,17 @@ class Handshake {
       type: PacketType.hello,
       payload: selfKeys.exportPublicKey(),
     );
-    String text = await wordCoder.toWords(packet.toBytes());
+    final compressedBytes = Uint8List.fromList(gzip.encode(packet.toBytes()));
+    String text = await wordCoder.toWords(compressedBytes);
     await transport.send(text);
   }
 
   Future<Uint8List> _waitForHello() async {
     try {
       await for (final text in transport.receive().timeout(const Duration(seconds: 5))) {
-        final bytes = await wordCoder.toBytes(text);
-        final packet = Packet.fromBytes(bytes);
+        final compressedBytes = await wordCoder.toBytes(text);
+        final decompressedBytes = Uint8List.fromList(gzip.decode(compressedBytes));
+        final packet = Packet.fromBytes(decompressedBytes);
         if (packet.type == PacketType.hello) {
           return packet.payload;
         }

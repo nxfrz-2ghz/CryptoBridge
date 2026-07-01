@@ -36,7 +36,19 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final hasUsers = context.watch<UserStore>().users.isNotEmpty;
+
     return Scaffold(
+      appBar: hasUsers
+          ? AppBar(
+        title: const Text("Create account"),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
+      )
+          : null,
+
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(32),

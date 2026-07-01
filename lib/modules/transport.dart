@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'package:uuid/uuid.dart';
 
 abstract class Transport {
   Future<void> init() async {}
@@ -55,6 +56,7 @@ class TestTransport extends Transport {
 
 class LanBroadcastTransport extends Transport {
   final int port;
+  final String _appInstanceId = const Uuid().v4();
   RawDatagramSocket? _socket;
   bool _isListening = false;
 
@@ -64,21 +66,26 @@ class LanBroadcastTransport extends Transport {
   Future<void> init() async {
     if (_isListening) return;
 
-    // Сязываем сокет со всеми адресами на указанном порту
     _socket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, port);
-
-    // Разрешаем отправку broadcast-пакетов
     _socket!.broadcastEnabled = true;
     _isListening = true;
 
-    // Слушаем входящие UDP-пакеты
     _socket!.listen((RawSocketEvent event) {
       if (event == RawSocketEvent.read) {
         final datagram = _socket!.receive();
         if (datagram != null) {
-          // Декодируем байты в строку и пушим в поток
-          final message = utf8.decode(datagram.data);
-          push(message);
+          try {
+            final rawMessage = utf8.decode(datagram.data);
+            final Map<String, dynamic> packet = jsonDecode(rawMessage);
+
+            if (packet[0] == _appInstanceId) {
+              return;
+            }
+
+            final String message = packet[1];
+            push(message);
+          } catch (e) {
+          }
         }
       }
     });
@@ -87,14 +94,18 @@ class LanBroadcastTransport extends Transport {
   @override
   Future<void> send(String bytes) async {
     if (_socket == null || !_isListening) {
-      throw StateError("Транспорт не инициализирован. Сначала вызовите init().");
+      throw StateError("Transport not initialized");
     }
 
-    final dataToSend = utf8.encode(bytes);
+    final List<dynamic> packet = [
+      _appInstanceId,
+      bytes,
+    ];
 
-    // Отправляем на специальный broadcast-адрес локальной сети
-    _socket!.send(dataToSend, InternetAddress.loopbackIPv4, port); // Для тестов на одном устройстве
-    _socket!.send(dataToSend, InternetAddress.anyIPv4, port);     // Для реальной локальной сети
+    final dataToSend = utf8.encode(jsonEncode(packet));
+
+    _socket!.send(dataToSend, InternetAddress.loopbackIPv4, port);
+    _socket!.send(dataToSend, InternetAddress("255.255.255.255"), port);
   }
 
   @override

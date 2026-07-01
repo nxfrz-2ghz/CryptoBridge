@@ -25,12 +25,14 @@ class Contact {
   final String nodeID;
   final TransportType transportType;
   final Uint8List? publicKey;
+  final String? trustedFingerprint;
 
   const Contact ({
     required this.name,
     required this.nodeID,
     required this.transportType,
     this.publicKey,
+    this.trustedFingerprint,
   });
 
   Transport createTransport() {
@@ -45,31 +47,34 @@ class Contact {
     return transport;
   }
 
-  Contact withPublicKey(Uint8List key) => Contact(
-    name: name,
-    nodeID: nodeID,
-    transportType: transportType,
-    publicKey: key,
+  Contact withPublicKey(Uint8List key, String fingerprint) => Contact(
+    name:                name,
+    nodeID:              nodeID,
+    transportType:       transportType,
+    publicKey:           key,
+    trustedFingerprint:  fingerprint,
   );
 
+
   bool get hasKey => publicKey != null;
+  bool get isTrusted => trustedFingerprint != null;
 
   // JSON SAVING/LOADING
   // ToJSON
   Map<String, dynamic> toJson() => {
-    'name': name,
-    'nodeID': nodeID,
-    'transportType': transportType.name,
-    'publicKey': publicKey != null ? base64Encode(publicKey!) : null,
+    'name':                name,
+    'nodeID':              nodeID,
+    'transportType':       transportType.name,
+    'publicKey':           publicKey != null ? base64Encode(publicKey!) : null,
+    'trustedFingerprint':  trustedFingerprint,
   };
 
   // FromJSON
   factory Contact.fromJson(Map<String, dynamic> json) => Contact(
-    name: json['name'] as String,
-    nodeID: json['nodeID'] as String,
-    transportType: TransportType.values.byName(json['transportType'] as String),
-    publicKey: json['publicKey'] != null
-        ? base64Decode(json['publicKey'] as String)
-        : null,
+    name:               json['name'] as String,
+    nodeID:             json['nodeID'] as String,
+    transportType:      TransportType.values.byName(json['transportType'] as String),
+    publicKey:          json['publicKey'] != null ? base64Decode(json['publicKey'] as String) : null,
+    trustedFingerprint: json['trustedFingerprint'] as String?,
   );
 }
